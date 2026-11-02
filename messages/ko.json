@@ -2982,6 +2982,11 @@
     "customer": "고객",
     "openChat": "채팅 열기",
     "loadFailed": "후속 조치를 불러오지 못했습니다.",
-    "retry": "다시 시도"
+    "retry": "다시 시도",
+    "confirmDoneTitle": "이 후속 조치를 완료 처리할까요?",
+    "confirmDoneDesc": "후속 조치 목록에서 사라지고 알림도 중단됩니다.",
+    "confirmDoneDescNamed": "{name}님의 후속 조치가 목록에서 사라지고 알림도 중단됩니다.",
+    "confirmDoneYes": "예, 완료 처리",
+    "cancel": "취소"
   }
 }

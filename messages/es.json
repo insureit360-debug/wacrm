@@ -2982,6 +2982,11 @@
     "customer": "Cliente",
     "openChat": "Abrir chat",
     "loadFailed": "No se pudieron cargar los seguimientos.",
-    "retry": "Reintentar"
+    "retry": "Reintentar",
+    "confirmDoneTitle": "¿Marcar este seguimiento como hecho?",
+    "confirmDoneDesc": "Se quitará de tus seguimientos y sus recordatorios se detendrán.",
+    "confirmDoneDescNamed": "El seguimiento de {name} se quitará de tu lista y sus recordatorios se detendrán.",
+    "confirmDoneYes": "Sí, marcar como hecho",
+    "cancel": "Cancelar"
   }
 }

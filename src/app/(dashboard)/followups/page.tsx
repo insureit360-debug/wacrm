@@ -10,6 +10,13 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { FollowupDoneWarning } from "@/components/followups/done-warning";
 import type { Followup } from "@/types";
 import { bucketFor, todayIso, type FollowupBucket } from "@/lib/followups/dates";
 
@@ -22,6 +29,7 @@ export default function FollowupsPage() {
   const [items, setItems] = useState<Followup[] | null>(null);
   const [error, setError] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!accountId) return;
@@ -55,6 +63,7 @@ export default function FollowupsPage() {
       .update({ status: "done", completed_at: now, updated_at: now })
       .eq("id", id);
     setBusyId(null);
+    setConfirmId(null);
     if (err) {
       toast.error(t("saveFailed"));
       return;
@@ -148,7 +157,7 @@ export default function FollowupsPage() {
                       size="sm"
                       variant="secondary"
                       disabled={busyId === f.id}
-                      onClick={() => void markDone(f.id)}
+                      onClick={() => setConfirmId(f.id)}
                     >
                       <Check className="h-4 w-4" />
                       <span className="hidden sm:inline">{t("markDone")}</span>
@@ -160,6 +169,23 @@ export default function FollowupsPage() {
           </section>
         );
       })}
+
+      <Dialog open={confirmId !== null} onOpenChange={(o) => !o && setConfirmId(null)}>
+        <DialogContent className="border-border bg-popover sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-popover-foreground">{t("markDone")}</DialogTitle>
+          </DialogHeader>
+          <FollowupDoneWarning
+            name={(() => {
+              const f = items.find((x) => x.id === confirmId);
+              return f ? f.contact?.name || f.contact?.phone || undefined : undefined;
+            })()}
+            busy={busyId !== null}
+            onCancel={() => setConfirmId(null)}
+            onConfirm={() => confirmId && void markDone(confirmId)}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -19,6 +19,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { FollowupDoneWarning } from "./done-warning";
 import type { Followup } from "@/types";
 import {
   addDaysIso,
@@ -43,6 +44,7 @@ export function FollowupButton({ conversationId, contactId }: Props) {
   const [expiry, setExpiry] = useState("");
   const [renewalHint, setRenewalHint] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [confirmingDone, setConfirmingDone] = useState(false);
 
   const load = useCallback(async () => {
     const supabase = createClient();
@@ -66,6 +68,7 @@ export function FollowupButton({ conversationId, contactId }: Props) {
     setNote(pending?.note ?? "");
     setExpiry("");
     setRenewalHint(null);
+    setConfirmingDone(false);
     setOpen(true);
   };
 
@@ -208,6 +211,14 @@ export function FollowupButton({ conversationId, contactId }: Props) {
             </DialogDescription>
           </DialogHeader>
 
+          {confirmingDone ? (
+            <FollowupDoneWarning
+              busy={busy}
+              onCancel={() => setConfirmingDone(false)}
+              onConfirm={() => void markDone()}
+            />
+          ) : (
+            <>
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="followup-date">{t("dateLabel")}</Label>
@@ -272,7 +283,7 @@ export function FollowupButton({ conversationId, contactId }: Props) {
             <div className="flex gap-2">
               {pending && (
                 <>
-                  <Button type="button" variant="outline" disabled={busy} onClick={markDone}>
+                  <Button type="button" variant="outline" disabled={busy} onClick={() => setConfirmingDone(true)}>
                     <Check className="h-4 w-4" />
                     {t("markDone")}
                   </Button>
@@ -293,6 +304,8 @@ export function FollowupButton({ conversationId, contactId }: Props) {
               {t("save")}
             </Button>
           </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </>

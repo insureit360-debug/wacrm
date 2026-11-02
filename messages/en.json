@@ -2982,6 +2982,11 @@
     "customer": "Customer",
     "openChat": "Open chat",
     "loadFailed": "Couldn't load follow-ups.",
-    "retry": "Try again"
+    "retry": "Try again",
+    "confirmDoneTitle": "Mark this follow-up as done?",
+    "confirmDoneDesc": "It will be removed from your follow-ups and its reminders will stop.",
+    "confirmDoneDescNamed": "Follow-up for {name} will be removed from your list and its reminders will stop.",
+    "confirmDoneYes": "Yes, mark done",
+    "cancel": "Cancel"
   }
 }

@@ -2982,6 +2982,11 @@
     "customer": "Cliente",
     "openChat": "Abrir conversa",
     "loadFailed": "Não foi possível carregar os acompanhamentos.",
-    "retry": "Tentar novamente"
+    "retry": "Tentar novamente",
+    "confirmDoneTitle": "Marcar este acompanhamento como feito?",
+    "confirmDoneDesc": "Ele será removido dos seus acompanhamentos e os lembretes serão interrompidos.",
+    "confirmDoneDescNamed": "O acompanhamento de {name} será removido da sua lista e os lembretes serão interrompidos.",
+    "confirmDoneYes": "Sim, marcar como feito",
+    "cancel": "Cancelar"
   }
 }
