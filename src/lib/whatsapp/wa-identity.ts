@@ -152,12 +152,25 @@ export function identityDisplayName(identity: WaIdentity): string {
  * BSUID itself, so the row always says something true about how to
  * recognise this person.
  */
+/**
+ * Display form of a stored phone number. WhatsApp/Meta store and require
+ * digits only (no "+"), so the database keeps "917448853319"; screens show
+ * "+917448853319". Display-only — never use the result as a send/match key.
+ */
+export function formatPhoneDisplay(phone: string | null | undefined): string {
+  const p = phone?.trim() ?? ''
+  if (!p) return ''
+  if (p.startsWith('+')) return p
+  // 7-15 digits = a plausible international number (E.164 allows up to 15).
+  return /^\d{7,15}$/.test(p) ? `+${p}` : p
+}
+
 export function contactHandle(contact: {
   phone?: string | null
   wa_username?: string | null
   wa_user_id?: string | null
 }): string {
-  if (contact.phone?.trim()) return contact.phone
+  if (contact.phone?.trim()) return formatPhoneDisplay(contact.phone)
   if (contact.wa_username?.trim()) return `@${contact.wa_username.trim()}`
   return contact.wa_user_id?.trim() ?? ''
 }

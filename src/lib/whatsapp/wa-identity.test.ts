@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   contactHandle,
+  formatPhoneDisplay,
   hasUsableIdentity,
   identityDisplayName,
   isBusinessScopedUserId,
@@ -257,5 +258,19 @@ describe('contactHandle', () => {
   it('is empty only when the contact carries no identity at all', () => {
     expect(contactHandle({})).toBe('')
     expect(contactHandle({ phone: null, wa_username: null, wa_user_id: null })).toBe('')
+  })
+})
+
+describe('formatPhoneDisplay', () => {
+  it('adds a leading + to stored digit-only numbers', () => {
+    expect(formatPhoneDisplay('917448853319')).toBe('+917448853319')
+    expect(contactHandle({ phone: '917448853319' })).toBe('+917448853319')
+  })
+  it('leaves numbers that already have + and non-phone values alone', () => {
+    expect(formatPhoneDisplay('+917448853319')).toBe('+917448853319')
+    expect(formatPhoneDisplay('12345')).toBe('12345')
+    expect(formatPhoneDisplay('abc')).toBe('abc')
+    expect(formatPhoneDisplay(null)).toBe('')
+    expect(formatPhoneDisplay('  ')).toBe('')
   })
 })

@@ -51,6 +51,7 @@ import {
 import { deleteAccountMedia } from "@/lib/storage/upload-media";
 import { TemplatePicker } from "./template-picker";
 import { AiThreadBanner } from "./ai-thread-banner";
+import { FollowupButton } from "@/components/followups/followup-button";
 import { buildReplyPreview } from "./reply-quote";
 import {
   renderTemplateBody,
@@ -1098,6 +1099,12 @@ export function MessageThread({
               />
             </button>
           )}
+
+          {/* Dated follow-up reminder for this conversation */}
+          <FollowupButton
+            conversationId={conversation.id}
+            contactId={conversation.contact_id}
+          />
 
           {/* Status dropdown */}
           <DropdownMenu>
