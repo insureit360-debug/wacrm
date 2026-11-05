@@ -350,7 +350,11 @@
       "clearAll": "Clear all",
       "noConversations": "No conversations found",
       "noMessagesYet": "No messages yet",
-      "unknown": "Unknown"
+      "unknown": "Unknown",
+      "dot_open": "Open · within the 24-hour reply window",
+      "dot_pending": "Pending · within the 24-hour reply window",
+      "dot_expired": "24-hour reply window ended · send a template to re-engage",
+      "dot_closed": "Closed"
     },
     "messageThread": {
       "backToConversations": "Back to conversations",
@@ -459,7 +463,8 @@
       "downloadFailed": "Couldn't download the attachment",
       "viewImage": "View image",
       "expandVideo": "Expand video",
-      "imageAlt": "Shared image"
+      "imageAlt": "Shared image",
+      "mediaDeleted": "File deleted to free storage"
     },
     "mediaViewer": {
       "counter": "{index} of {total}",
@@ -579,7 +584,18 @@
       "toastBulkDeleted": "{count} contacts deleted",
       "filterByTag": "Filter by {name}",
       "removeTagFilter": "Remove {name} filter",
-      "selectContact": "Select {name}"
+      "selectContact": "Select {name}",
+      "dateFrom": "Added from",
+      "dateTo": "Added to",
+      "presetToday": "Today",
+      "presetYesterday": "Yesterday",
+      "presetLast7": "Last 7 days",
+      "presetLast30": "Last 30 days",
+      "presetThisMonth": "This month",
+      "clearDates": "Clear dates",
+      "exportExcel": "Export Excel",
+      "exportDone": "Exported {count} contacts to Excel",
+      "exportFailed": "Couldn't export the contacts. Please try again."
     },
     "form": {
       "addTitle": "Add Contact",
@@ -2988,5 +3004,34 @@
     "confirmDoneDescNamed": "Follow-up for {name} will be removed from your list and its reminders will stop.",
     "confirmDoneYes": "Yes, mark done",
     "cancel": "Cancel"
+  },
+  "MediaManager": {
+    "button": "Files",
+    "title": "Free up storage",
+    "description": "Customer images and PDFs in this chat are stored on your server. Pick the ones to delete. The messages, text and contact are not touched.",
+    "loadFailed": "Couldn't load the files.",
+    "retry": "Try again",
+    "empty": "No customer files are stored for this chat.",
+    "summary": "{count} files · {size}",
+    "whatsappHosted": "{count} more are hosted by WhatsApp and use none of your storage",
+    "filter_all": "All",
+    "filter_image": "Images",
+    "filter_document": "PDFs & documents",
+    "filter_other": "Other",
+    "selectAll": "Select all shown",
+    "clear": "Clear",
+    "sizeUnknown": "size unknown",
+    "view": "View",
+    "showMore": "Show more",
+    "selectedSummary": "{count} selected · {size}",
+    "deleteSelected": "Delete selected ({count})",
+    "confirmTitle": "Permanently delete {count} files?",
+    "confirmBody": "This frees about {size} of storage. The messages, captions, contact, notes and everything else in the chat stay. Deleted files can NOT be recovered, and WhatsApp may no longer have them either.",
+    "confirmType": "Type DELETE to confirm",
+    "back": "Back",
+    "confirmYes": "Delete files",
+    "deletedToast": "Deleted {count} files · freed {size}",
+    "partialToast": "{count} files could not be deleted and were left untouched.",
+    "failedToast": "Could not delete the files. Nothing was changed."
   }
 }

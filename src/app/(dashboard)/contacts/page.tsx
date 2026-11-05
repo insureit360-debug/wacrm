@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { formatPhoneDisplay } from '@/lib/whatsapp/wa-identity'
+import { presetRange, rangeBounds, todayInTz, type DatePreset } from '@/lib/contacts/date-range'
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import type { Contact, Tag, ContactTag } from '@/types';
@@ -49,6 +50,7 @@ import {
   ChevronRight,
   SlidersHorizontal,
   Filter,
+  Download,
   X,
 } from 'lucide-react';
 import { ContactForm } from '@/components/contacts/contact-form';
@@ -84,6 +86,10 @@ export default function ContactsPage() {
   const [totalCount, setTotalCount] = useState(0);
   // Tag filter — contacts shown must have ANY of these tags (OR).
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  // "Added between" date filter (calendar days, India time). Empty = no limit.
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [exporting, setExporting] = useState(false);
 
   // Modals
   const [formOpen, setFormOpen] = useState(false);
@@ -136,6 +142,8 @@ export default function ContactsPage() {
     const from = page * PAGE_SIZE;
     const to = from + PAGE_SIZE - 1;
     const term = search.trim();
+    const { fromIso, toIsoExclusive } = rangeBounds(dateFrom, dateTo);
+    const datesActive = fromIso !== null || toIsoExclusive !== null;
 
     let contactRows: Contact[];
     let count: number;
@@ -146,12 +154,23 @@ export default function ContactsPage() {
       // windowed total count + pagination) so a tag covering many
       // contacts can't silently truncate the result or overflow an IN
       // clause. See migration 025_filter_contacts_by_tags.
-      const { data, error } = await supabase.rpc('filter_contacts_by_tags', {
-        p_tag_ids: selectedTagIds,
-        p_search: contactSearchPattern(term),
-        p_limit: PAGE_SIZE,
-        p_offset: from,
-      });
+      // The dated variant (migration 063) is only used when a date range is
+      // set, so tag filtering keeps working even before 063 is applied.
+      const { data, error } = datesActive
+        ? await supabase.rpc('filter_contacts_by_tags_dated', {
+            p_tag_ids: selectedTagIds,
+            p_search: contactSearchPattern(term),
+            p_from: fromIso,
+            p_to: toIsoExclusive,
+            p_limit: PAGE_SIZE,
+            p_offset: from,
+          })
+        : await supabase.rpc('filter_contacts_by_tags', {
+            p_tag_ids: selectedTagIds,
+            p_search: contactSearchPattern(term),
+            p_limit: PAGE_SIZE,
+            p_offset: from,
+          });
       if (seq !== fetchSeq.current) return; // superseded by a newer fetch
       if (error) {
         toast.error(t('toastFailedLoad'));
@@ -171,6 +190,8 @@ export default function ContactsPage() {
 
       const searchFilter = contactSearchFilter(term, { includeEmail: true });
       if (searchFilter) query = query.or(searchFilter);
+      if (fromIso) query = query.gte('created_at', fromIso);
+      if (toIsoExclusive) query = query.lt('created_at', toIsoExclusive);
 
       const { data, count: exactCount, error } = await query;
       if (seq !== fetchSeq.current) return; // superseded by a newer fetch
@@ -227,7 +248,7 @@ export default function ContactsPage() {
 
     setContacts(enriched);
     setLoading(false);
-  }, [supabase, page, search, selectedTagIds, tagsMap, t]);
+  }, [supabase, page, search, selectedTagIds, dateFrom, dateTo, tagsMap, t]);
 
   // Load-once-on-mount-ish data fetches. Each setter inside runs
   // inside an async promise completion (Supabase await), not
@@ -343,7 +364,62 @@ export default function ContactsPage() {
   const allTags = Object.values(tagsMap).sort((a, b) =>
     a.name.localeCompare(b.name)
   );
-  const hasActiveFilters = search.trim().length > 0 || selectedTagIds.length > 0;
+  const hasActiveFilters =
+    search.trim().length > 0 ||
+    selectedTagIds.length > 0 ||
+    dateFrom !== '' ||
+    dateTo !== '';
+
+  function applyPreset(preset: DatePreset) {
+    const r = presetRange(preset, todayInTz());
+    setDateFrom(r.from);
+    setDateTo(r.to);
+    setPage(0);
+  }
+
+  function clearDates() {
+    setDateFrom('');
+    setDateTo('');
+    setPage(0);
+  }
+
+  // Downloads an Excel file of EVERYTHING matching the current search, tag and
+  // date filters (not just the page on screen).
+  async function exportExcel() {
+    setExporting(true);
+    try {
+      const params = new URLSearchParams();
+      if (dateFrom) params.set('from', dateFrom);
+      if (dateTo) params.set('to', dateTo);
+      if (search.trim()) params.set('q', search.trim());
+      if (selectedTagIds.length > 0) params.set('tags', selectedTagIds.join(','));
+      const res = await fetch(`/api/contacts/export?${params.toString()}`, {
+        credentials: 'same-origin',
+      });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as { error?: string } | null;
+        toast.error(body?.error || t('exportFailed'));
+        return;
+      }
+      const count = res.headers.get('X-Exported-Count') ?? '';
+      const disposition = res.headers.get('Content-Disposition') ?? '';
+      const name = /filename="([^"]+)"/.exec(disposition)?.[1] ?? 'contacts.xlsx';
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success(t('exportDone', { count }));
+    } catch {
+      toast.error(t('exportFailed'));
+    } finally {
+      setExporting(false);
+    }
+  }
 
   function toggleTagFilter(tagId: string) {
     setSelectedTagIds((prev) =>
@@ -480,6 +556,78 @@ export default function ContactsPage() {
               )}
             </PopoverContent>
           </Popover>
+        </div>
+
+        {/* Date filter (date the contact was added) + Excel export */}
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="space-y-1">
+            <label htmlFor="contacts-date-from" className="text-xs text-muted-foreground">
+              {t('dateFrom')}
+            </label>
+            <Input
+              id="contacts-date-from"
+              type="date"
+              value={dateFrom}
+              max={dateTo || undefined}
+              onChange={(e) => {
+                setDateFrom(e.target.value);
+                setPage(0);
+              }}
+              className="w-40 bg-card border-border text-foreground"
+            />
+          </div>
+          <div className="space-y-1">
+            <label htmlFor="contacts-date-to" className="text-xs text-muted-foreground">
+              {t('dateTo')}
+            </label>
+            <Input
+              id="contacts-date-to"
+              type="date"
+              value={dateTo}
+              min={dateFrom || undefined}
+              onChange={(e) => {
+                setDateTo(e.target.value);
+                setPage(0);
+              }}
+              className="w-40 bg-card border-border text-foreground"
+            />
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {([
+              ['today', t('presetToday')],
+              ['yesterday', t('presetYesterday')],
+              ['last7', t('presetLast7')],
+              ['last30', t('presetLast30')],
+              ['thisMonth', t('presetThisMonth')],
+            ] as Array<[DatePreset, string]>).map(([key, label]) => (
+              <Button
+                key={key}
+                type="button"
+                size="sm"
+                variant="outline"
+                className="border-border text-muted-foreground hover:bg-muted"
+                onClick={() => applyPreset(key)}
+              >
+                {label}
+              </Button>
+            ))}
+            {(dateFrom || dateTo) && (
+              <Button type="button" size="sm" variant="ghost" onClick={clearDates}>
+                {t('clearDates')}
+              </Button>
+            )}
+          </div>
+          <span className="flex-1" />
+          <Button
+            type="button"
+            variant="outline"
+            className="border-border text-muted-foreground hover:bg-muted"
+            disabled={exporting || loading}
+            onClick={() => void exportExcel()}
+          >
+            {exporting ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+            {t('exportExcel')}
+          </Button>
         </div>
 
         {/* Active tag-filter chips */}

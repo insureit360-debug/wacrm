@@ -350,7 +350,11 @@
       "clearAll": "모두 지우기",
       "noConversations": "대화를 찾을 수 없습니다",
       "noMessagesYet": "아직 메시지가 없습니다",
-      "unknown": "알 수 없음"
+      "unknown": "알 수 없음",
+      "dot_open": "열림 · 24시간 답장 가능 시간 이내",
+      "dot_pending": "대기 중 · 24시간 답장 가능 시간 이내",
+      "dot_expired": "24시간 답장 가능 시간이 끝났습니다 · 템플릿을 보내세요",
+      "dot_closed": "종료됨"
     },
     "messageThread": {
       "backToConversations": "대화 목록으로 돌아가기",
@@ -459,7 +463,8 @@
       "downloadFailed": "첨부파일을 다운로드할 수 없습니다",
       "viewImage": "이미지 보기",
       "expandVideo": "동영상 확대",
-      "imageAlt": "공유된 이미지"
+      "imageAlt": "공유된 이미지",
+      "mediaDeleted": "저장 공간 확보를 위해 삭제된 파일"
     },
     "mediaViewer": {
       "counter": "{total}개 중 {index}번째",
@@ -579,7 +584,18 @@
       "toastBulkDeleted": "연락처 {count}개가 삭제되었습니다",
       "filterByTag": "{name}(으)로 필터링",
       "removeTagFilter": "{name} 필터 제거",
-      "selectContact": "{name} 선택"
+      "selectContact": "{name} 선택",
+      "dateFrom": "추가일(시작)",
+      "dateTo": "추가일(끝)",
+      "presetToday": "오늘",
+      "presetYesterday": "어제",
+      "presetLast7": "최근 7일",
+      "presetLast30": "최근 30일",
+      "presetThisMonth": "이번 달",
+      "clearDates": "날짜 초기화",
+      "exportExcel": "Excel 내보내기",
+      "exportDone": "연락처 {count}개를 Excel로 내보냈습니다",
+      "exportFailed": "연락처를 내보내지 못했습니다. 다시 시도해 주세요."
     },
     "form": {
       "addTitle": "연락처 추가",
@@ -2988,5 +3004,34 @@
     "confirmDoneDescNamed": "{name}님의 후속 조치가 목록에서 사라지고 알림도 중단됩니다.",
     "confirmDoneYes": "예, 완료 처리",
     "cancel": "취소"
+  },
+  "MediaManager": {
+    "button": "파일",
+    "title": "저장 공간 확보",
+    "description": "이 채팅의 고객 이미지와 PDF는 서버에 저장됩니다. 삭제할 파일을 선택하세요. 메시지, 텍스트, 연락처는 변경되지 않습니다.",
+    "loadFailed": "파일을 불러오지 못했습니다.",
+    "retry": "다시 시도",
+    "empty": "이 채팅에 저장된 고객 파일이 없습니다.",
+    "summary": "파일 {count}개 · {size}",
+    "whatsappHosted": "{count}개는 WhatsApp에 있어 저장 공간을 사용하지 않습니다",
+    "filter_all": "전체",
+    "filter_image": "이미지",
+    "filter_document": "PDF·문서",
+    "filter_other": "기타",
+    "selectAll": "표시된 항목 모두 선택",
+    "clear": "선택 해제",
+    "sizeUnknown": "크기 알 수 없음",
+    "view": "보기",
+    "showMore": "더 보기",
+    "selectedSummary": "{count}개 선택 · {size}",
+    "deleteSelected": "선택 삭제 ({count})",
+    "confirmTitle": "파일 {count}개를 영구 삭제할까요?",
+    "confirmBody": "약 {size}의 저장 공간이 확보됩니다. 메시지, 캡션, 연락처, 메모 등 채팅의 나머지는 그대로 유지됩니다. 삭제한 파일은 복구할 수 없으며 WhatsApp에도 더 이상 없을 수 있습니다.",
+    "confirmType": "확인하려면 DELETE를 입력하세요",
+    "back": "뒤로",
+    "confirmYes": "파일 삭제",
+    "deletedToast": "파일 {count}개 삭제 · {size} 확보",
+    "partialToast": "파일 {count}개는 삭제하지 못해 그대로 두었습니다.",
+    "failedToast": "파일을 삭제하지 못했습니다. 변경된 것은 없습니다."
   }
 }

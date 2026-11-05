@@ -350,7 +350,11 @@
       "clearAll": "Limpar tudo",
       "noConversations": "Nenhuma conversa encontrada",
       "noMessagesYet": "Nenhuma mensagem ainda",
-      "unknown": "Desconhecido"
+      "unknown": "Desconhecido",
+      "dot_open": "Aberta · dentro da janela de 24 horas",
+      "dot_pending": "Pendente · dentro da janela de 24 horas",
+      "dot_expired": "A janela de 24 horas terminou · envie um modelo",
+      "dot_closed": "Fechada"
     },
     "messageThread": {
       "backToConversations": "Voltar às conversas",
@@ -459,7 +463,8 @@
       "downloadFailed": "Não foi possível baixar o anexo",
       "viewImage": "Ver imagem",
       "expandVideo": "Expandir vídeo",
-      "imageAlt": "Imagem compartilhada"
+      "imageAlt": "Imagem compartilhada",
+      "mediaDeleted": "Arquivo excluído para liberar armazenamento"
     },
     "mediaViewer": {
       "counter": "{index} de {total}",
@@ -579,7 +584,18 @@
       "toastBulkDeleted": "{count} contatos excluídos",
       "filterByTag": "Filtrar por {name}",
       "removeTagFilter": "Remover o filtro {name}",
-      "selectContact": "Selecionar {name}"
+      "selectContact": "Selecionar {name}",
+      "dateFrom": "Adicionado de",
+      "dateTo": "Adicionado até",
+      "presetToday": "Hoje",
+      "presetYesterday": "Ontem",
+      "presetLast7": "Últimos 7 dias",
+      "presetLast30": "Últimos 30 dias",
+      "presetThisMonth": "Este mês",
+      "clearDates": "Limpar datas",
+      "exportExcel": "Exportar Excel",
+      "exportDone": "{count} contatos exportados para o Excel",
+      "exportFailed": "Não foi possível exportar os contatos. Tente novamente."
     },
     "form": {
       "addTitle": "Adicionar contato",
@@ -2988,5 +3004,34 @@
     "confirmDoneDescNamed": "O acompanhamento de {name} será removido da sua lista e os lembretes serão interrompidos.",
     "confirmDoneYes": "Sim, marcar como feito",
     "cancel": "Cancelar"
+  },
+  "MediaManager": {
+    "button": "Arquivos",
+    "title": "Liberar armazenamento",
+    "description": "As imagens e PDFs de clientes deste chat ficam no seu servidor. Escolha quais excluir. As mensagens, o texto e o contato não são alterados.",
+    "loadFailed": "Não foi possível carregar os arquivos.",
+    "retry": "Tentar novamente",
+    "empty": "Não há arquivos de clientes armazenados para este chat.",
+    "summary": "{count} arquivos · {size}",
+    "whatsappHosted": "mais {count} estão hospedados no WhatsApp e não usam seu armazenamento",
+    "filter_all": "Todos",
+    "filter_image": "Imagens",
+    "filter_document": "PDFs e documentos",
+    "filter_other": "Outros",
+    "selectAll": "Selecionar todos exibidos",
+    "clear": "Limpar",
+    "sizeUnknown": "tamanho desconhecido",
+    "view": "Ver",
+    "showMore": "Mostrar mais",
+    "selectedSummary": "{count} selecionados · {size}",
+    "deleteSelected": "Excluir selecionados ({count})",
+    "confirmTitle": "Excluir {count} arquivos permanentemente?",
+    "confirmBody": "Isso libera cerca de {size}. As mensagens, legendas, contato, notas e todo o resto do chat permanecem. Os arquivos excluídos NÃO podem ser recuperados e o WhatsApp pode não tê-los mais.",
+    "confirmType": "Digite DELETE para confirmar",
+    "back": "Voltar",
+    "confirmYes": "Excluir arquivos",
+    "deletedToast": "{count} arquivos excluídos · {size} liberados",
+    "partialToast": "{count} arquivos não puderam ser excluídos e foram mantidos.",
+    "failedToast": "Não foi possível excluir os arquivos. Nada foi alterado."
   }
 }
