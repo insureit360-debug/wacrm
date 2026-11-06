@@ -15,8 +15,18 @@ import {
   DollarSign,
   StickyNote,
   Plus,
+  X,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { hasMinRole } from "@/lib/auth/roles";
+import { applyTagToggle, toPlainTags } from "@/lib/inbox/tag-toggle";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
 import { useTranslations } from "next-intl";
@@ -24,17 +34,22 @@ import { contactHandle } from "@/lib/whatsapp/wa-identity";
 
 interface ContactSidebarProps {
   contact: Contact | null;
+  /** Called after a tag was added/removed so the chat list's Tags filter stays in sync. */
+  onTagsChange?: (contactId: string, tags: Tag[]) => void;
 }
 
-export function ContactSidebar({ contact }: ContactSidebarProps) {
+export function ContactSidebar({ contact, onTagsChange }: ContactSidebarProps) {
   const tSidebar = useTranslations("Inbox.sidebar");
   const tThread = useTranslations("Inbox.messageThread");
 
-  const { accountId } = useAuth();
+  const { accountId, accountRole } = useAuth();
+  const canTag = !!accountRole && hasMinRole(accountRole, "agent");
   const [copied, setCopied] = useState(false);
   const [deals, setDeals] = useState<Deal[]>([]);
   const [notes, setNotes] = useState<ContactNote[]>([]);
   const [tags, setTags] = useState<(Tag & { contact_tag_id: string })[]>([]);
+  const [allTags, setAllTags] = useState<Tag[]>([]);
+  const [tagBusy, setTagBusy] = useState<string | null>(null);
   const [newNote, setNewNote] = useState("");
   const [addingNote, setAddingNote] = useState(false);
 
@@ -73,6 +88,48 @@ export function ContactSidebar({ contact }: ContactSidebarProps) {
       setTags(mapped);
     }
   }, [contact]);
+
+  // All tags in the account, for the "Add tag" dropdown.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await createClient().from("tags").select("*").order("name");
+      if (!cancelled && data) setAllTags(data as Tag[]);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Add/remove a tag through the same server route the rest of the app uses,
+  // so automations ("tag added") still fire. Updates instantly and rolls back
+  // if the server refuses.
+  const setTagOn = useCallback(
+    async (tag: Tag, on: boolean) => {
+      if (!contact || tagBusy) return;
+      setTagBusy(tag.id);
+      const before = tags;
+      const optimistic = applyTagToggle(before, tag, on);
+      setTags(optimistic);
+      try {
+        const res = await fetch(`/api/contacts/${contact.id}/tags`, {
+          method: on ? "POST" : "DELETE",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tag_id: tag.id }),
+        });
+        if (!res.ok) throw new Error(String(res.status));
+        onTagsChange?.(contact.id, toPlainTags(optimistic));
+        void fetchContactData(); // swap the temporary ids for the real ones
+      } catch {
+        setTags(before);
+        toast.error(tSidebar("tagUpdateFailed"));
+      } finally {
+        setTagBusy(null);
+      }
+    },
+    [contact, tagBusy, tags, onTagsChange, fetchContactData, tSidebar],
+  );
 
   // Load on contact change. setContactData/setTags run inside async
   // Supabase callbacks, not synchronously in the effect body.
@@ -189,9 +246,50 @@ export function ContactSidebar({ contact }: ContactSidebarProps) {
 
           {/* Tags */}
           <div>
-            <div className="flex items-center gap-2 px-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              <TagIcon className="h-3 w-3" />
-              {tSidebar("tags")}
+            <div className="flex items-center justify-between gap-2 px-1">
+              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                <TagIcon className="h-3 w-3" />
+                {tSidebar("tags")}
+              </div>
+              {canTag && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    className="inline-flex h-6 items-center gap-1 rounded-md px-1.5 text-xs text-primary hover:bg-muted"
+                    aria-label={tSidebar("addTag")}
+                  >
+                    <Plus className="h-3 w-3" />
+                    {tSidebar("addTag")}
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="end"
+                    className="max-h-64 w-56 border-border bg-popover"
+                  >
+                    {allTags.length === 0 ? (
+                      <p className="px-2 py-2 text-xs text-muted-foreground">
+                        {tSidebar("noTagsCreated")}
+                      </p>
+                    ) : (
+                      allTags.map((tag) => (
+                        <DropdownMenuCheckboxItem
+                          key={tag.id}
+                          checked={tags.some((t) => t.id === tag.id)}
+                          disabled={tagBusy !== null}
+                          onCheckedChange={(checked) => void setTagOn(tag, checked)}
+                          className="text-sm text-popover-foreground"
+                        >
+                          <span className="flex items-center gap-2">
+                            <span
+                              className="h-2 w-2 shrink-0 rounded-full"
+                              style={{ backgroundColor: tag.color }}
+                            />
+                            <span className="truncate">{tag.name}</span>
+                          </span>
+                        </DropdownMenuCheckboxItem>
+                      ))
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
             <div className="mt-2 flex flex-wrap gap-1">
               {tags.length === 0 ? (
@@ -200,13 +298,25 @@ export function ContactSidebar({ contact }: ContactSidebarProps) {
                 tags.map((tag) => (
                   <span
                     key={tag.contact_tag_id}
-                    className="rounded-full px-2 py-0.5 text-[10px] font-medium"
+                    className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium"
                     style={{
                       backgroundColor: `${tag.color}20`,
                       color: tag.color,
                     }}
                   >
                     {tag.name}
+                    {canTag && (
+                      <button
+                        type="button"
+                        disabled={tagBusy !== null}
+                        onClick={() => void setTagOn(tag, false)}
+                        aria-label={tSidebar("removeTag", { name: tag.name })}
+                        title={tSidebar("removeTag", { name: tag.name })}
+                        className="rounded-full hover:bg-black/10 disabled:opacity-50"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    )}
                   </span>
                 ))
               )}

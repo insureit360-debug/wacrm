@@ -593,6 +593,11 @@ function InboxPageInner() {
             onSelect={handleSelectConversation}
             conversations={conversations}
             onConversationsLoaded={handleConversationsLoaded}
+            onConversationsPatched={(ids, patch) =>
+              setConversations((prev) =>
+                prev.map((c) => (ids.includes(c.id) ? { ...c, ...patch } : c)),
+              )
+            }
             resyncToken={resyncToken}
             initialFilter={parseInboxFilter(searchParams.get("filter"))}
           />
@@ -638,7 +643,22 @@ function InboxPageInner() {
             toggle — which is itself desktop-only — never affects it. */}
         {contactPanelOpen && (
           <div className="hidden lg:block">
-            <ContactSidebar contact={activeContact} />
+            <ContactSidebar
+              contact={activeContact}
+              onTagsChange={(contactId, newTags) => {
+                // Keep the chat list's "Tags" filter (and the open contact) in sync.
+                setConversations((prev) =>
+                  prev.map((c) =>
+                    c.contact_id === contactId && c.contact
+                      ? { ...c, contact: { ...c.contact, tags: newTags } }
+                      : c,
+                  ),
+                );
+                setActiveContact((prev) =>
+                  prev && prev.id === contactId ? { ...prev, tags: newTags } : prev,
+                );
+              }}
+            />
           </div>
         )}
       </div>

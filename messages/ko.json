@@ -354,7 +354,20 @@
       "dot_open": "열림 · 24시간 답장 가능 시간 이내",
       "dot_pending": "대기 중 · 24시간 답장 가능 시간 이내",
       "dot_expired": "24시간 답장 가능 시간이 끝났습니다 · 템플릿을 보내세요",
-      "dot_closed": "종료됨"
+      "dot_closed": "종료됨",
+      "filterArchived": "보관함",
+      "select": "선택",
+      "cancelSelect": "선택 취소",
+      "selectedCount": "{count}개 선택됨",
+      "selectAll": "모두 선택",
+      "unselectAll": "모두 선택 해제",
+      "archive": "보관",
+      "unarchive": "보관 해제",
+      "archivedToast": "채팅 {count}개를 보관했습니다",
+      "unarchivedToast": "채팅 {count}개를 받은 편지함으로 되돌렸습니다",
+      "undo": "실행 취소",
+      "archiveFailed": "채팅을 업데이트하지 못했습니다. 변경된 것은 없습니다.",
+      "noArchived": "보관된 채팅이 없습니다"
     },
     "messageThread": {
       "backToConversations": "대화 목록으로 돌아가기",
@@ -525,7 +538,11 @@
       "deals": "딜",
       "noTags": "태그 없음",
       "noDeals": "딜 없음",
-      "addNotePlaceholder": "메모 추가..."
+      "addNotePlaceholder": "메모 추가...",
+      "addTag": "태그 추가",
+      "removeTag": "{name} 태그 제거",
+      "noTagsCreated": "아직 태그가 없습니다. 설정 → 태그에서 만드세요.",
+      "tagUpdateFailed": "태그를 업데이트하지 못했습니다. 다시 시도해 주세요."
     },
     "aiBanner": {
       "pausedTitle": "이 대화에서 AI 어시스턴트가 일시 중지됨",

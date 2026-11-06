@@ -354,7 +354,20 @@
       "dot_open": "Aberta · dentro da janela de 24 horas",
       "dot_pending": "Pendente · dentro da janela de 24 horas",
       "dot_expired": "A janela de 24 horas terminou · envie um modelo",
-      "dot_closed": "Fechada"
+      "dot_closed": "Fechada",
+      "filterArchived": "Arquivadas",
+      "select": "Selecionar",
+      "cancelSelect": "Cancelar seleção",
+      "selectedCount": "{count} selecionadas",
+      "selectAll": "Selecionar tudo",
+      "unselectAll": "Desmarcar tudo",
+      "archive": "Arquivar",
+      "unarchive": "Desarquivar",
+      "archivedToast": "{count} conversas arquivadas",
+      "unarchivedToast": "{count} conversas devolvidas à caixa de entrada",
+      "undo": "Desfazer",
+      "archiveFailed": "Não foi possível atualizar as conversas. Nada foi alterado.",
+      "noArchived": "Nenhuma conversa arquivada"
     },
     "messageThread": {
       "backToConversations": "Voltar às conversas",
@@ -525,7 +538,11 @@
       "deals": "Negócios",
       "noTags": "Sem tags",
       "noDeals": "Sem negócios",
-      "addNotePlaceholder": "Adicionar uma nota..."
+      "addNotePlaceholder": "Adicionar uma nota...",
+      "addTag": "Adicionar tag",
+      "removeTag": "Remover tag {name}",
+      "noTagsCreated": "Ainda não há tags. Crie-as em Configurações → Tags.",
+      "tagUpdateFailed": "Não foi possível atualizar a tag. Tente novamente."
     },
     "aiBanner": {
       "pausedTitle": "O assistente de IA está pausado aqui",

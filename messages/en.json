@@ -354,7 +354,20 @@
       "dot_open": "Open · within the 24-hour reply window",
       "dot_pending": "Pending · within the 24-hour reply window",
       "dot_expired": "24-hour reply window ended · send a template to re-engage",
-      "dot_closed": "Closed"
+      "dot_closed": "Closed",
+      "filterArchived": "Archived",
+      "select": "Select",
+      "cancelSelect": "Cancel selection",
+      "selectedCount": "{count} selected",
+      "selectAll": "Select all",
+      "unselectAll": "Unselect all",
+      "archive": "Archive",
+      "unarchive": "Unarchive",
+      "archivedToast": "{count} chats archived",
+      "unarchivedToast": "{count} chats moved back to your inbox",
+      "undo": "Undo",
+      "archiveFailed": "Couldn't update the chats. Nothing was changed.",
+      "noArchived": "No archived chats"
     },
     "messageThread": {
       "backToConversations": "Back to conversations",
@@ -525,7 +538,11 @@
       "deals": "Deals",
       "noTags": "No tags",
       "noDeals": "No deals",
-      "addNotePlaceholder": "Add a note..."
+      "addNotePlaceholder": "Add a note...",
+      "addTag": "Add tag",
+      "removeTag": "Remove tag {name}",
+      "noTagsCreated": "No tags yet. Create them in Settings → Tags.",
+      "tagUpdateFailed": "Couldn't update the tag. Please try again."
     },
     "aiBanner": {
       "pausedTitle": "AI assistant is paused here",

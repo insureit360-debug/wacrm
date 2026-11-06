@@ -354,7 +354,20 @@
       "dot_open": "Abierta · dentro de la ventana de 24 horas",
       "dot_pending": "Pendiente · dentro de la ventana de 24 horas",
       "dot_expired": "Terminó la ventana de 24 horas · envía una plantilla",
-      "dot_closed": "Cerrada"
+      "dot_closed": "Cerrada",
+      "filterArchived": "Archivados",
+      "select": "Seleccionar",
+      "cancelSelect": "Cancelar selección",
+      "selectedCount": "{count} seleccionados",
+      "selectAll": "Seleccionar todos",
+      "unselectAll": "Deseleccionar todos",
+      "archive": "Archivar",
+      "unarchive": "Desarchivar",
+      "archivedToast": "{count} chats archivados",
+      "unarchivedToast": "{count} chats devueltos a tu bandeja",
+      "undo": "Deshacer",
+      "archiveFailed": "No se pudieron actualizar los chats. No se cambió nada.",
+      "noArchived": "No hay chats archivados"
     },
     "messageThread": {
       "backToConversations": "Volver a las conversaciones",
@@ -525,7 +538,11 @@
       "deals": "Negocios",
       "noTags": "Sin etiquetas",
       "noDeals": "Sin negocios",
-      "addNotePlaceholder": "Agregar una nota..."
+      "addNotePlaceholder": "Agregar una nota...",
+      "addTag": "Añadir etiqueta",
+      "removeTag": "Quitar etiqueta {name}",
+      "noTagsCreated": "Aún no hay etiquetas. Créalas en Ajustes → Etiquetas.",
+      "tagUpdateFailed": "No se pudo actualizar la etiqueta. Inténtalo de nuevo."
     },
     "aiBanner": {
       "pausedTitle": "El asistente de IA está en pausa aquí",
