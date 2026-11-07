@@ -180,6 +180,8 @@ export interface Conversation {
   last_inbound_at?: string | null;
   last_reply_at?: string | null;
   closed_at?: string | null;
+  /** Set when the chat is archived (migration 064). Hidden from the main inbox; a new customer message clears it. */
+  archived_at?: string | null;
   created_at: string;
   updated_at: string;
   contact?: Contact;
@@ -268,6 +270,8 @@ export interface Message {
    * Null on every row written before migration 039.
    */
   media_type?: string | null;
+  /** Set (migration 062) when the stored file was deleted to free space; the message itself stays. */
+  media_deleted_at?: string | null;
   template_name?: string;
   message_id?: string;
   status: MessageStatus;

@@ -32,6 +32,7 @@ export function useTotalUnread(): number {
             .from("conversations")
             .select("id")
             .gt("unread_count", 0)
+            .is("archived_at", null)
             .order("id")
             .range(from, to),
         );

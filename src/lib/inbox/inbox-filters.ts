@@ -9,6 +9,7 @@ export const INBOX_FILTERS = [
   "open",
   "pending",
   "closed",
+  "archived",
 ] as const;
 
 export type InboxFilter = (typeof INBOX_FILTERS)[number];
@@ -34,6 +35,30 @@ export function isWindowClosing(c: Conversation, now: number): boolean {
   return closesAt > now && closesAt - now <= EXPIRING_WITHIN_MS;
 }
 
+/**
+ * WhatsApp only allows free-form replies for 24 hours after the customer's
+ * last message. Outside it you must use an approved template.
+ */
+export function isReplyWindowOpen(
+  c: Pick<Conversation, "last_inbound_at">,
+  now: number,
+): boolean {
+  if (!c.last_inbound_at) return false;
+  return new Date(c.last_inbound_at).getTime() + WINDOW_MS > now;
+}
+
+export type ConversationDot = "open" | "pending" | "expired" | "closed";
+
+/** What the small dot in the inbox list shows for a conversation. */
+export function conversationDot(
+  c: Pick<Conversation, "status" | "last_inbound_at">,
+  now: number,
+): ConversationDot {
+  if (c.status === "closed") return "closed";
+  if (!isReplyWindowOpen(c, now)) return "expired";
+  return c.status === "pending" ? "pending" : "open";
+}
+
 function byOldestInbound(a: Conversation, b: Conversation): number {
   return (a.last_inbound_at ?? "").localeCompare(b.last_inbound_at ?? "");
 }
@@ -43,18 +68,24 @@ export function applyInboxFilter(
   filter: InboxFilter,
   now: number,
 ): Conversation[] {
+  // Archived chats live only under the "Archived" filter; every other view
+  // (All, Unread, Waiting, ...) hides them, like WhatsApp Business.
+  if (filter === "archived") return conversations.filter((c) => !!c.archived_at);
+  const live = conversations.some((c) => c.archived_at)
+    ? conversations.filter((c) => !c.archived_at)
+    : conversations;
   switch (filter) {
     case "all":
-      return conversations;
+      return live;
     case "unread":
-      return conversations.filter((c) => c.unread_count > 0);
+      return live.filter((c) => c.unread_count > 0);
     case "waiting":
-      return conversations.filter(isAwaitingReply).sort(byOldestInbound);
+      return live.filter(isAwaitingReply).sort(byOldestInbound);
     case "expiring":
-      return conversations.filter((c) => isWindowClosing(c, now)).sort(byOldestInbound);
+      return live.filter((c) => isWindowClosing(c, now)).sort(byOldestInbound);
     case "unassigned":
-      return conversations.filter((c) => c.status === "open" && !c.assigned_agent_id);
+      return live.filter((c) => c.status === "open" && !c.assigned_agent_id);
     default:
-      return conversations.filter((c) => c.status === (filter as ConversationStatus));
+      return live.filter((c) => c.status === (filter as ConversationStatus));
   }
 }

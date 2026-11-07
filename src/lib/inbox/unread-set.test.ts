@@ -26,3 +26,13 @@ describe("applyUnreadChange", () => {
     expect(ids.size).toBe(0);
   });
 });
+
+describe("archived chats and the unread badge", () => {
+  it("does not count an archived chat, and counts it again once unarchived", () => {
+    const set = new Set<string>();
+    applyUnreadChange(set, { eventType: "UPDATE", new: { id: "c1", unread_count: 3, archived_at: "2026-10-10T00:00:00Z" } });
+    expect(set.has("c1")).toBe(false);
+    applyUnreadChange(set, { eventType: "UPDATE", new: { id: "c1", unread_count: 3, archived_at: null } });
+    expect(set.has("c1")).toBe(true);
+  });
+});

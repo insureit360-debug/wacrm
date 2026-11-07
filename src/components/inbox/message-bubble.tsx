@@ -21,6 +21,7 @@ import {
   Phone,
   Copy,
   type LucideIcon,
+  Trash2,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ReplyQuote } from "./reply-quote";
@@ -179,6 +180,27 @@ function MessageContent({
   // Passed to the media bubbles as a no-arg callback; `undefined` when the
   // parent wired up no viewer, which is what makes them non-clickable.
   const openMedia = onOpenMedia ? () => onOpenMedia(message.id) : undefined;
+
+  // The file was deleted from storage to free space; the message (and its
+  // caption) is still here, so say so instead of showing a broken image.
+  if (
+    message.media_deleted_at &&
+    ["image", "video", "audio", "document"].includes(message.content_type)
+  ) {
+    return (
+      <div>
+        <div className="flex items-center gap-2 rounded-lg bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+          <Trash2 className="h-4 w-4 shrink-0" />
+          <span>{t("mediaDeleted")}</span>
+        </div>
+        {message.content_text && message.content_type !== "document" && (
+          <p className="mt-1 whitespace-pre-wrap break-words text-sm">
+            <LinkifyText text={message.content_text} isAgent={isAgent} />
+          </p>
+        )}
+      </div>
+    );
+  }
 
   switch (message.content_type) {
     case "text":

@@ -8,10 +8,17 @@ import {
   matchesContactFilters,
   normalizeConversations,
 } from "@/lib/inbox/conversations";
-import { applyInboxFilter, type InboxFilter } from "@/lib/inbox/inbox-filters";
+import {
+  applyInboxFilter,
+  conversationDot,
+  type ConversationDot,
+  type InboxFilter,
+} from "@/lib/inbox/inbox-filters";
 import { cn } from "@/lib/utils";
-import type { Conversation, ConversationStatus, Tag } from "@/types";
-import { Search, ChevronDown, X } from "lucide-react";
+import type { Conversation, Tag } from "@/types";
+import { Archive, ArchiveRestore, Check, CheckSquare, Search, ChevronDown, X } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import { formatDistanceToNow } from "date-fns";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
@@ -29,6 +36,8 @@ interface ConversationListProps {
   onSelect: (conversation: Conversation) => void;
   conversations: Conversation[];
   onConversationsLoaded: (conversations: Conversation[]) => void;
+  /** Called after an archive/unarchive so the parent can update its list immediately. */
+  onConversationsPatched?: (ids: string[], patch: Partial<Conversation>) => void;
   /**
    * Increment to force the fetch effect below to refire. The parent
    * bumps this on realtime reconnect / tab visibility → visible so the
@@ -39,10 +48,13 @@ interface ConversationListProps {
   initialFilter?: InboxFilter;
 }
 
-const STATUS_COLORS: Record<ConversationStatus, string> = {
+// Purple = open and inside WhatsApp's 24-hour reply window, amber = pending,
+// solid grey = the 24-hour window has expired (use a template), grey ring = closed.
+const DOT_CLASSES: Record<ConversationDot, string> = {
   open: "bg-primary",
   pending: "bg-amber-500",
-  closed: "bg-muted-foreground",
+  expired: "bg-muted-foreground",
+  closed: "border border-muted-foreground bg-transparent",
 };
 
 
@@ -51,11 +63,17 @@ export function ConversationList({
   onSelect,
   conversations,
   onConversationsLoaded,
+  onConversationsPatched,
   resyncToken = 0,
   initialFilter = "all",
 }: ConversationListProps) {
   const t = useTranslations("Inbox.conversationList");
   
+  const archivedCount = useMemo(
+    () => conversations.filter((c) => !!c.archived_at).length,
+    [conversations],
+  );
+
   const FILTER_OPTIONS: { label: string; value: InboxFilter }[] = useMemo(() => [
     { label: t("filterAll"), value: "all" },
     { label: t("filterUnread"), value: "unread" },
@@ -65,11 +83,19 @@ export function ConversationList({
     { label: t("filterOpen"), value: "open" },
     { label: t("filterPending"), value: "pending" },
     { label: t("filterClosed"), value: "closed" },
-  ], [t]);
+    {
+      label: archivedCount > 0 ? `${t("filterArchived")} (${archivedCount})` : t("filterArchived"),
+      value: "archived",
+    },
+  ], [t, archivedCount]);
 
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<InboxFilter>(initialFilter);
   const [now, setNow] = useState(() => Date.now());
+  // Selection mode (like WhatsApp Business): pick chats, then archive them.
+  const [selecting, setSelecting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [archiving, setArchiving] = useState(false);
 
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 60_000);
@@ -214,6 +240,84 @@ export function ConversationList({
     []
   );
 
+  const viewingArchived = filter === "archived";
+
+  // Keep the selection limited to what is visible, so "Select all" and the
+  // count always describe exactly the chats that will be archived.
+  useEffect(() => {
+    if (!selecting) return;
+    const visible = new Set(filtered.map((c) => c.id));
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSelectedIds((prev) => {
+      const next = new Set([...prev].filter((id) => visible.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [filtered, selecting]);
+
+  const exitSelection = useCallback(() => {
+    setSelecting(false);
+    setSelectedIds(new Set());
+  }, []);
+
+  const toggleSelected = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const startSelectionWith = useCallback((id: string) => {
+    setSelecting(true);
+    setSelectedIds(new Set([id]));
+  }, []);
+
+  const allSelected =
+    filtered.length > 0 && filtered.every((c) => selectedIds.has(c.id));
+
+  const toggleSelectAll = () =>
+    setSelectedIds(allSelected ? new Set() : new Set(filtered.map((c) => c.id)));
+
+  const setArchived = useCallback(
+    async (ids: string[], archived: boolean, offerUndo: boolean) => {
+      if (ids.length === 0) return;
+      setArchiving(true);
+      try {
+        const res = await fetch("/api/conversations/archive", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ids, archived }),
+        });
+        if (!res.ok) throw new Error(String(res.status));
+        onConversationsPatched?.(ids, {
+          archived_at: archived ? new Date().toISOString() : null,
+        });
+        toast(
+          archived
+            ? t("archivedToast", { count: ids.length })
+            : t("unarchivedToast", { count: ids.length }),
+          offerUndo
+            ? {
+                action: {
+                  label: t("undo"),
+                  onClick: () => void setArchived(ids, !archived, false),
+                },
+              }
+            : undefined,
+        );
+        setSelecting(false);
+        setSelectedIds(new Set());
+      } catch {
+        toast.error(t("archiveFailed"));
+      } finally {
+        setArchiving(false);
+      }
+    },
+    [onConversationsPatched, t],
+  );
+
   const handleSelect = useCallback(
     (conv: Conversation) => {
       onSelect(conv);
@@ -239,6 +343,45 @@ export function ConversationList({
             className="border-border bg-muted pl-9 text-sm text-foreground placeholder-muted-foreground focus:border-primary/50"
           />
         </div>
+
+        {selecting && (
+          <div className="flex flex-wrap items-center gap-2 rounded-md bg-muted px-2 py-1.5">
+            <button
+              type="button"
+              onClick={exitSelection}
+              aria-label={t("cancelSelect")}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+            <span className="text-xs font-medium text-foreground">
+              {t("selectedCount", { count: selectedIds.size })}
+            </span>
+            <button
+              type="button"
+              onClick={toggleSelectAll}
+              className="text-xs text-primary hover:underline"
+            >
+              {allSelected ? t("unselectAll") : t("selectAll")}
+            </button>
+            <span className="flex-1" />
+            <Button
+              type="button"
+              size="sm"
+              disabled={selectedIds.size === 0 || archiving}
+              onClick={() =>
+                void setArchived(Array.from(selectedIds), !viewingArchived, true)
+              }
+            >
+              {viewingArchived ? (
+                <ArchiveRestore className="h-4 w-4" />
+              ) : (
+                <Archive className="h-4 w-4" />
+              )}
+              {viewingArchived ? t("unarchive") : t("archive")}
+            </Button>
+          </div>
+        )}
 
         <div className="flex flex-wrap items-center gap-1">
           <DropdownMenu>
@@ -354,6 +497,16 @@ export function ConversationList({
               </DropdownMenuContent>
             </DropdownMenu>
           )}
+          {!selecting && (
+            <button
+              type="button"
+              onClick={() => setSelecting(true)}
+              className="ml-auto inline-flex h-7 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <CheckSquare className="h-3.5 w-3.5" />
+              {t("select")}
+            </button>
+          )}
         </div>
 
         {hasContactFilters && (
@@ -407,7 +560,9 @@ export function ConversationList({
           </div>
         ) : filtered.length === 0 ? (
           <div className="px-4 py-12 text-center">
-            <p className="text-sm text-muted-foreground">{t("noConversations")}</p>
+            <p className="text-sm text-muted-foreground">
+              {viewingArchived ? t("noArchived") : t("noConversations")}
+            </p>
           </div>
         ) : (
           <div className="flex flex-col">
@@ -417,6 +572,11 @@ export function ConversationList({
                 conversation={conv}
                 isActive={conv.id === activeConversationId}
                 onSelect={handleSelect}
+                selecting={selecting}
+                selected={selectedIds.has(conv.id)}
+                onToggle={toggleSelected}
+                onLongPress={startSelectionWith}
+                now={now}
                 t={t}
               />
             ))}
@@ -431,6 +591,11 @@ interface ConversationItemProps {
   conversation: Conversation;
   isActive: boolean;
   onSelect: (conversation: Conversation) => void;
+  selecting: boolean;
+  selected: boolean;
+  onToggle: (id: string) => void;
+  onLongPress: (id: string) => void;
+  now: number;
   t: ReturnType<typeof useTranslations>;
 }
 
@@ -438,15 +603,37 @@ function ConversationItem({
   conversation,
   isActive,
   onSelect,
+  selecting,
+  selected,
+  onToggle,
+  onLongPress,
+  now,
   t,
 }: ConversationItemProps) {
   const contact = conversation.contact;
+  const dot = conversationDot(conversation, now);
   const displayName = contact?.name || formatPhoneDisplay(contact?.phone) || t("unknown");
   const initials = displayName.charAt(0).toUpperCase();
 
+  // Long-press on touch screens starts selection (like WhatsApp). The click
+  // that follows the long press must not also open the chat.
+  const pressTimer = useRef<number | null>(null);
+  const longPressed = useRef(false);
+  const clearPress = () => {
+    if (pressTimer.current !== null) {
+      window.clearTimeout(pressTimer.current);
+      pressTimer.current = null;
+    }
+  };
+
   const handleClick = useCallback(() => {
-    onSelect(conversation);
-  }, [onSelect, conversation]);
+    if (longPressed.current) {
+      longPressed.current = false;
+      return;
+    }
+    if (selecting) onToggle(conversation.id);
+    else onSelect(conversation);
+  }, [selecting, onToggle, onSelect, conversation]);
 
   const timeAgo = conversation.last_message_at
     ? formatDistanceToNow(new Date(conversation.last_message_at), {
@@ -457,11 +644,40 @@ function ConversationItem({
   return (
     <button
       onClick={handleClick}
+      onPointerDown={(e) => {
+        if (selecting || e.pointerType !== "touch") return;
+        longPressed.current = false;
+        pressTimer.current = window.setTimeout(() => {
+          longPressed.current = true;
+          onLongPress(conversation.id);
+        }, 500);
+      }}
+      onPointerUp={clearPress}
+      onPointerLeave={clearPress}
+      onPointerCancel={clearPress}
+      onContextMenu={(e) => {
+        if (longPressed.current) e.preventDefault();
+      }}
+      aria-pressed={selecting ? selected : undefined}
       className={cn(
         "flex w-full items-start gap-3 px-3 py-3 text-left transition-colors hover:bg-muted/50",
-        isActive && "border-l-2 border-primary bg-muted/70"
+        isActive && "border-l-2 border-primary bg-muted/70",
+        selected && "bg-primary/10"
       )}
     >
+      {selecting && (
+        <span
+          aria-hidden
+          className={cn(
+            "mt-2.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border",
+            selected
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-muted-foreground"
+          )}
+        >
+          {selected && <Check className="h-3.5 w-3.5" />}
+        </span>
+      )}
       {/* Avatar */}
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-medium text-foreground">
         {contact?.avatar_url ? (
@@ -496,9 +712,10 @@ function ConversationItem({
             <span
               className={cn(
                 "h-2 w-2 rounded-full",
-                STATUS_COLORS[conversation.status]
+                DOT_CLASSES[dot]
               )}
-              title={conversation.status}
+              title={t(`dot_${dot}`)}
+              aria-label={t(`dot_${dot}`)}
             />
           </div>
         </div>

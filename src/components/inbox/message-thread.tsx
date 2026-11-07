@@ -52,6 +52,8 @@ import { deleteAccountMedia } from "@/lib/storage/upload-media";
 import { TemplatePicker } from "./template-picker";
 import { AiThreadBanner } from "./ai-thread-banner";
 import { FollowupButton } from "@/components/followups/followup-button";
+import { MediaManagerButton } from "@/components/inbox/media-manager";
+import { hasMinRole } from "@/lib/auth/roles";
 import { buildReplyPreview } from "./reply-quote";
 import {
   renderTemplateBody,
@@ -192,7 +194,7 @@ export function MessageThread({
   const tTimer = useTranslations("Inbox.sessionTimer");
   const tQuote = useTranslations("Inbox.replyQuote");
 
-  const { user } = useAuth();
+  const { user, accountRole } = useAuth();
   const { getPresence, getRow, now } = usePresence();
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -1098,6 +1100,21 @@ export function MessageThread({
                 className={cn("h-3.5 w-3.5", isRefreshing && "animate-spin")}
               />
             </button>
+          )}
+
+          {/* Admins: free storage by deleting selected customer files (chat stays intact) */}
+          {accountRole && hasMinRole(accountRole, "admin") && (
+            <MediaManagerButton
+              conversationId={conversation.id}
+              onDeleted={(ids) =>
+                ids.forEach((id) =>
+                  onUpdateMessage(id, {
+                    media_url: undefined,
+                    media_deleted_at: new Date().toISOString(),
+                  }),
+                )
+              }
+            />
           )}
 
           {/* Dated follow-up reminder for this conversation */}
