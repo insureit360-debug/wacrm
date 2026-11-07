@@ -354,7 +354,20 @@
       "dot_open": "Open · within the 24-hour reply window",
       "dot_pending": "Pending · within the 24-hour reply window",
       "dot_expired": "24-hour reply window ended · send a template to re-engage",
-      "dot_closed": "Closed"
+      "dot_closed": "Closed",
+      "filterArchived": "Archived",
+      "select": "Select",
+      "cancelSelect": "Cancel selection",
+      "selectedCount": "{count} selected",
+      "selectAll": "Select all",
+      "unselectAll": "Unselect all",
+      "archive": "Archive",
+      "unarchive": "Unarchive",
+      "archivedToast": "{count} chats archived",
+      "unarchivedToast": "{count} chats moved back to your inbox",
+      "undo": "Undo",
+      "archiveFailed": "Couldn't update the chats. Nothing was changed.",
+      "noArchived": "No archived chats"
     },
     "messageThread": {
       "backToConversations": "Back to conversations",
@@ -584,7 +597,18 @@
       "toastBulkDeleted": "{count} contacts deleted",
       "filterByTag": "Filter by {name}",
       "removeTagFilter": "Remove {name} filter",
-      "selectContact": "Select {name}"
+      "selectContact": "Select {name}",
+      "dateFrom": "Added from",
+      "dateTo": "Added to",
+      "presetToday": "Today",
+      "presetYesterday": "Yesterday",
+      "presetLast7": "Last 7 days",
+      "presetLast30": "Last 30 days",
+      "presetThisMonth": "This month",
+      "clearDates": "Clear dates",
+      "exportExcel": "Export Excel",
+      "exportDone": "Exported {count} contacts to Excel",
+      "exportFailed": "Couldn't export the contacts. Please try again."
     },
     "form": {
       "addTitle": "Add Contact",

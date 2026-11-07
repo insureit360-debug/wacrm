@@ -354,7 +354,20 @@
       "dot_open": "열림 · 24시간 답장 가능 시간 이내",
       "dot_pending": "대기 중 · 24시간 답장 가능 시간 이내",
       "dot_expired": "24시간 답장 가능 시간이 끝났습니다 · 템플릿을 보내세요",
-      "dot_closed": "종료됨"
+      "dot_closed": "종료됨",
+      "filterArchived": "보관함",
+      "select": "선택",
+      "cancelSelect": "선택 취소",
+      "selectedCount": "{count}개 선택됨",
+      "selectAll": "모두 선택",
+      "unselectAll": "모두 선택 해제",
+      "archive": "보관",
+      "unarchive": "보관 해제",
+      "archivedToast": "채팅 {count}개를 보관했습니다",
+      "unarchivedToast": "채팅 {count}개를 받은 편지함으로 되돌렸습니다",
+      "undo": "실행 취소",
+      "archiveFailed": "채팅을 업데이트하지 못했습니다. 변경된 것은 없습니다.",
+      "noArchived": "보관된 채팅이 없습니다"
     },
     "messageThread": {
       "backToConversations": "대화 목록으로 돌아가기",
@@ -584,7 +597,18 @@
       "toastBulkDeleted": "연락처 {count}개가 삭제되었습니다",
       "filterByTag": "{name}(으)로 필터링",
       "removeTagFilter": "{name} 필터 제거",
-      "selectContact": "{name} 선택"
+      "selectContact": "{name} 선택",
+      "dateFrom": "추가일(시작)",
+      "dateTo": "추가일(끝)",
+      "presetToday": "오늘",
+      "presetYesterday": "어제",
+      "presetLast7": "최근 7일",
+      "presetLast30": "최근 30일",
+      "presetThisMonth": "이번 달",
+      "clearDates": "날짜 초기화",
+      "exportExcel": "Excel 내보내기",
+      "exportDone": "연락처 {count}개를 Excel로 내보냈습니다",
+      "exportFailed": "연락처를 내보내지 못했습니다. 다시 시도해 주세요."
     },
     "form": {
       "addTitle": "연락처 추가",

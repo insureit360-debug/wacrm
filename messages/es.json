@@ -354,7 +354,20 @@
       "dot_open": "Abierta · dentro de la ventana de 24 horas",
       "dot_pending": "Pendiente · dentro de la ventana de 24 horas",
       "dot_expired": "Terminó la ventana de 24 horas · envía una plantilla",
-      "dot_closed": "Cerrada"
+      "dot_closed": "Cerrada",
+      "filterArchived": "Archivados",
+      "select": "Seleccionar",
+      "cancelSelect": "Cancelar selección",
+      "selectedCount": "{count} seleccionados",
+      "selectAll": "Seleccionar todos",
+      "unselectAll": "Deseleccionar todos",
+      "archive": "Archivar",
+      "unarchive": "Desarchivar",
+      "archivedToast": "{count} chats archivados",
+      "unarchivedToast": "{count} chats devueltos a tu bandeja",
+      "undo": "Deshacer",
+      "archiveFailed": "No se pudieron actualizar los chats. No se cambió nada.",
+      "noArchived": "No hay chats archivados"
     },
     "messageThread": {
       "backToConversations": "Volver a las conversaciones",
@@ -584,7 +597,18 @@
       "toastBulkDeleted": "{count} contactos eliminados",
       "filterByTag": "Filtrar por {name}",
       "removeTagFilter": "Quitar el filtro {name}",
-      "selectContact": "Seleccionar {name}"
+      "selectContact": "Seleccionar {name}",
+      "dateFrom": "Añadido desde",
+      "dateTo": "Añadido hasta",
+      "presetToday": "Hoy",
+      "presetYesterday": "Ayer",
+      "presetLast7": "Últimos 7 días",
+      "presetLast30": "Últimos 30 días",
+      "presetThisMonth": "Este mes",
+      "clearDates": "Borrar fechas",
+      "exportExcel": "Exportar Excel",
+      "exportDone": "{count} contactos exportados a Excel",
+      "exportFailed": "No se pudieron exportar los contactos. Inténtalo de nuevo."
     },
     "form": {
       "addTitle": "Agregar contacto",
