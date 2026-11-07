@@ -180,8 +180,6 @@ export interface Conversation {
   last_inbound_at?: string | null;
   last_reply_at?: string | null;
   closed_at?: string | null;
-  /** Set when the chat is archived (migration 064). Hidden from the main inbox; a new customer message clears it. */
-  archived_at?: string | null;
   created_at: string;
   updated_at: string;
   contact?: Contact;
