@@ -32,7 +32,7 @@ describe('runFollowupReminders', () => {
     expect(r).toEqual({ created: 1 })
     const [acct, payload, opts] = sendPushToAccount.mock.calls[0]
     expect(acct).toBe('acct')
-    expect(opts).toEqual({ userId: 'user-1' })
+    expect(opts).toEqual({ userId: 'user-1', source: 'followup' })
     expect(payload).toMatchObject({
       v: 1,
       conversationId: 'conv-1',

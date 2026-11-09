@@ -41,7 +41,7 @@ export async function runFollowupReminders(): Promise<{ created: number; error?:
         tag: `followup:${r.out_conversation_id}`,
         ts: Date.now(),
       },
-      { userId: r.out_user_id },
+      { userId: r.out_user_id, source: 'followup' },
     ).catch(() => undefined)
   }
   return { created: rows.length }

@@ -166,3 +166,39 @@ self.addEventListener('notificationclick', function (event) {
   }
   event.waitUntil(openChat(d.url));
 });
+
+// The browser/push service can rotate a device's registration (Firefox does
+// this regularly). Re-register on our own so alerts keep arriving without
+// the user having to open the app and press anything.
+function urlB64ToUint8Array(b64) {
+  var padding = '='.repeat((4 - (b64.length % 4)) % 4);
+  var raw = atob((b64 + padding).replace(/-/g, '+').replace(/_/g, '/'));
+  var out = new Uint8Array(raw.length);
+  for (var i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out;
+}
+
+self.addEventListener('pushsubscriptionchange', function (event) {
+  event.waitUntil(
+    (async function () {
+      try {
+        var r = await fetch('/api/push/public-key', { credentials: 'same-origin' });
+        if (!r.ok) return;
+        var k = await r.json();
+        if (!k || !k.publicKey) return;
+        var sub = await self.registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlB64ToUint8Array(k.publicKey),
+        });
+        await fetch('/api/push/subscribe', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ subscription: sub.toJSON() }),
+        });
+      } catch {
+        /* the app re-checks and repairs on next open */
+      }
+    })()
+  );
+});

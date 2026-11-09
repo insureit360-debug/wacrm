@@ -8,7 +8,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 type Handler = (event: Record<string, unknown>) => void
 
-function loadSw(opts: { windows?: Array<{ url: string; visibilityState: string }>; fetchImpl?: (...a: unknown[]) => unknown } = {}) {
+function loadSw(opts: { windows?: Array<{ url: string; visibilityState: string }>; fetchImpl?: (...a: unknown[]) => unknown; subscribe?: (o: unknown) => Promise<unknown> } = {}) {
   const handlers: Record<string, Handler> = {}
   const shown: Array<{ title: string; options: Record<string, unknown> }> = []
   const focus = vi.fn(async () => {})
@@ -22,6 +22,7 @@ function loadSw(opts: { windows?: Array<{ url: string; visibilityState: string }
     },
     skipWaiting: () => {},
     registration: {
+      pushManager: { subscribe: opts.subscribe ?? (async () => ({ toJSON: () => ({}) })) },
       showNotification: async (title: string, options: Record<string, unknown>) => {
         shown.push({ title, options })
       },
@@ -34,7 +35,7 @@ function loadSw(opts: { windows?: Array<{ url: string; visibilityState: string }
     },
   }
   const code = readFileSync(join(process.cwd(), 'public/sw.js'), 'utf8')
-  vm.runInNewContext(code, { self, URL, fetch: fetchMock, Promise, JSON, Date, console })
+  vm.runInNewContext(code, { self, URL, fetch: fetchMock, Promise, JSON, Date, console, atob, Uint8Array })
   return { handlers, shown, fetchMock, focus, navigate, openWindow }
 }
 
@@ -148,5 +149,30 @@ describe('service worker: quick reply', () => {
     await fire(sw2.handlers.notificationclick, { action: 'open', notification: { data, close } })
     expect(sw2.focus).toHaveBeenCalled()
     expect(sw2.navigate).toHaveBeenCalledWith('https://wa.example.com/inbox?c=conv-1')
+  })
+})
+
+describe('service worker: self-repair when the browser rotates the registration', () => {
+  it('re-subscribes with the server key and sends the new subscription to the server', async () => {
+    const subscribe = vi.fn(async (_opts: unknown) => ({ toJSON: () => ({ endpoint: 'https://push.example/new', keys: { p256dh: 'k', auth: 'a' } }) }))
+    const fetchImpl = vi.fn(async (url: unknown, _init?: unknown) =>
+      String(url).includes('public-key')
+        ? { ok: true, status: 200, json: async () => ({ configured: true, publicKey: 'BAUG' }) }
+        : { ok: true, status: 200, json: async () => ({}) },
+    )
+    const sw = loadSw({ subscribe, fetchImpl })
+    await fire(sw.handlers.pushsubscriptionchange, {})
+    expect(subscribe).toHaveBeenCalledTimes(1)
+    const opts = subscribe.mock.calls[0][0] as { userVisibleOnly: boolean; applicationServerKey: Uint8Array }
+    expect(opts.userVisibleOnly).toBe(true)
+    expect(opts.applicationServerKey).toBeInstanceOf(Uint8Array)
+    const post = fetchImpl.mock.calls.find((c) => String(c[0]).includes('/api/push/subscribe'))!
+    expect(JSON.parse((post[1] as { body: string }).body).subscription.endpoint).toBe('https://push.example/new')
+  })
+  it('does nothing (and does not throw) when push is not configured or the user is signed out', async () => {
+    const subscribe = vi.fn(async (_opts: unknown) => ({}))
+    const sw = loadSw({ subscribe, fetchImpl: async () => ({ ok: false, status: 401, json: async () => ({}) }) })
+    await expect(fire(sw.handlers.pushsubscriptionchange, {})).resolves.toBeUndefined()
+    expect(subscribe).not.toHaveBeenCalled()
   })
 })

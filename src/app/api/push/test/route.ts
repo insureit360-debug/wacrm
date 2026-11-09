@@ -23,7 +23,7 @@ export async function POST() {
         ts: Date.now(),
         test: true,
       },
-      { userId },
+      { userId, source: 'test' },
     )
     return NextResponse.json(result)
   } catch (err) {
