@@ -332,7 +332,8 @@
   },
   "Inbox": {
     "page": {
-      "whatsappNotConnected": "WhatsApp®이 연결되어 있지 않습니다. 설정으로 이동해 계정을 연결하세요."
+      "whatsappNotConnected": "WhatsApp®이 연결되어 있지 않습니다. 설정으로 이동해 계정을 연결하세요.",
+      "contactInfoTitle": "연락처 정보, 태그, 메모"
     },
     "conversationList": {
       "searchPlaceholder": "대화 검색...",
@@ -405,7 +406,8 @@
       "assigneeNoLongerMember": "해당 팀원은 더 이상 이 계정의 멤버가 아닙니다",
       "networkError": "네트워크 오류",
       "documentFallback": "문서",
-      "you": "나"
+      "you": "나",
+      "contactInfo": "연락처 정보, 태그, 메모"
     },
     "sessionTimer": {
       "expired": "만료됨",
@@ -456,7 +458,13 @@
         "document": "문서",
         "audio": "오디오"
       },
-      "uploadFailed": "업로드에 실패했습니다."
+      "uploadFailed": "업로드에 실패했습니다.",
+      "tooManyFiles": "한 번에 최대 {max}개의 파일을 첨부할 수 있습니다.",
+      "uploadingProgress": "{total}개 중 {done}개 업로드 중…",
+      "someUploadsFailed": "파일 {count}개를 업로드하지 못했습니다.",
+      "removeAll": "모두 제거",
+      "sendCount": "첨부 파일 {count}개 보내기",
+      "attachmentN": "첨부 파일 {n}"
     },
     "bubble": {
       "photo": "사진",

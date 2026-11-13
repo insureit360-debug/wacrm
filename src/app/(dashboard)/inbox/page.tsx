@@ -8,12 +8,13 @@ import {
   CONVERSATION_SELECT,
   normalizeConversation,
 } from "@/lib/inbox/conversations";
-import type { Conversation, Message, Contact, ConversationStatus } from "@/types";
+import type { Conversation, Message, Contact, ConversationStatus, Tag } from "@/types";
 import { useRealtime } from "@/hooks/use-realtime";
 import { ConversationList } from "@/components/inbox/conversation-list";
 import { parseInboxFilter } from "@/lib/inbox/inbox-filters";
 import { MessageThread } from "@/components/inbox/message-thread";
 import { ContactSidebar } from "@/components/inbox/contact-sidebar";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -76,6 +77,8 @@ function InboxPageInner() {
    * below reconciles to the stored value right after mount instead.
    */
   const [contactPanelOpen, setContactPanelOpen] = useState(true);
+  // Phones: the contact panel opens as a drawer instead of a side column.
+  const [mobileContactOpen, setMobileContactOpen] = useState(false);
   useEffect(() => {
     try {
       const stored = localStorage.getItem(CONTACT_PANEL_STORAGE_KEY);
@@ -565,6 +568,20 @@ function InboxPageInner() {
   // before, unchanged.
   const hasActiveConv = !!activeConversation;
 
+  // Keep the chat list's "Tags" filter (and the open contact) in sync after tagging.
+  const handleTagsChange = (contactId: string, newTags: Tag[]) => {
+    setConversations((prev) =>
+      prev.map((c) =>
+        c.contact_id === contactId && c.contact
+          ? { ...c, contact: { ...c.contact, tags: newTags } }
+          : c,
+      ),
+    );
+    setActiveContact((prev) =>
+      prev && prev.id === contactId ? { ...prev, tags: newTags } : prev,
+    );
+  };
+
   return (
     <div className="-m-4 flex h-[calc(100vh-3.5rem)] flex-col overflow-hidden sm:-m-6">
       {/* WhatsApp connection banner — in the flex column, not absolute,
@@ -634,6 +651,7 @@ function InboxPageInner() {
             onRefresh={handleManualRefresh}
             contactPanelOpen={contactPanelOpen}
             onToggleContactPanel={handleToggleContactPanel}
+            onOpenContactInfo={() => setMobileContactOpen(true)}
           />
         </div>
 
@@ -645,22 +663,22 @@ function InboxPageInner() {
           <div className="hidden lg:block">
             <ContactSidebar
               contact={activeContact}
-              onTagsChange={(contactId, newTags) => {
-                // Keep the chat list's "Tags" filter (and the open contact) in sync.
-                setConversations((prev) =>
-                  prev.map((c) =>
-                    c.contact_id === contactId && c.contact
-                      ? { ...c, contact: { ...c.contact, tags: newTags } }
-                      : c,
-                  ),
-                );
-                setActiveContact((prev) =>
-                  prev && prev.id === contactId ? { ...prev, tags: newTags } : prev,
-                );
-              }}
+              onTagsChange={handleTagsChange}
             />
           </div>
         )}
+
+        {/* Phones: same panel (tags, notes, deals) in a slide-in drawer,
+            opened from the chat header. Hidden on lg+ where the column shows. */}
+        <Sheet open={mobileContactOpen} onOpenChange={setMobileContactOpen}>
+          <SheetContent side="right" showCloseButton className="w-[88vw] max-w-sm gap-0 p-0 lg:hidden">
+            <SheetHeader className="sr-only">
+              <SheetTitle>{t("contactInfoTitle")}</SheetTitle>
+              <SheetDescription>{t("contactInfoTitle")}</SheetDescription>
+            </SheetHeader>
+            <ContactSidebar contact={activeContact} fullWidth onTagsChange={handleTagsChange} />
+          </SheetContent>
+        </Sheet>
       </div>
     </div>
   );

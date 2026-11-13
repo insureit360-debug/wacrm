@@ -42,6 +42,13 @@ import { useCan } from "@/hooks/use-can";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
+  MAX_ATTACHMENTS,
+  UPLOAD_CONCURRENCY,
+  limitToRoom,
+  runPool,
+  sendInOrder,
+} from "@/lib/inbox/attachments";
+import {
   uploadAccountMedia,
   deleteAccountMedia,
   MEDIA_MAX_BYTES_BY_KIND,
@@ -68,6 +75,9 @@ export const MEDIA_CAPTION_MAX = 1024;
 /** Hard cap on a single voice recording so it can't blow the upload/
  *  transcode limits — auto-stops the recorder when reached. */
 const MAX_RECORDING_SECONDS = 5 * 60;
+
+const newDraftId = () =>
+  `d-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
 export interface SendMediaPayload {
   kind: ComposerMediaKind;
@@ -101,6 +111,8 @@ const PICKER_ACCEPT: Record<"image" | "video" | "document", string> = {
 };
 
 interface MediaDraft {
+  /** Client-side id: keys the tray and targets caption edits. */
+  id: string;
   kind: ComposerMediaKind;
   mediaUrl: string;
   /** Storage path — used to GC the object if the draft is discarded. */
@@ -113,7 +125,7 @@ interface MessageComposerProps {
   conversationId: string;
   sessionExpired: boolean;
   onSend: (text: string, replyToId?: string) => void;
-  onSendMedia: (payload: SendMediaPayload) => void;
+  onSendMedia: (payload: SendMediaPayload) => void | Promise<void>;
   onSendInteractive: (payload: InteractiveMessagePayload, replyToId?: string) => void;
   onOpenTemplates: () => void;
   replyTo?: ReplyDraft | null;
@@ -172,7 +184,12 @@ export function MessageComposer({
 
   // Media attachment state. `draft` holds an uploaded-but-not-yet-sent
   // attachment; `busy` covers the upload/transcode window.
-  const [draft, setDraft] = useState<MediaDraft | null>(null);
+  // Several attachments can wait in the tray; `draft` is the one currently
+  // shown in the preview (its caption is the one being edited).
+  const [drafts, setDrafts] = useState<MediaDraft[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null);
+  const draft = drafts.find((d) => d.id === activeId) ?? drafts[0] ?? null;
   const [busy, setBusy] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
@@ -180,10 +197,10 @@ export function MessageComposer({
   // Mirror of `draft` for the unmount cleanup, which can't read render
   // state. Kept in sync below so navigating away with a staged-but-unsent
   // attachment GCs the orphaned object.
-  const draftRef = useRef<MediaDraft | null>(null);
+  const draftsRef = useRef<MediaDraft[]>([]);
   useEffect(() => {
-    draftRef.current = draft;
-  }, [draft]);
+    draftsRef.current = drafts;
+  }, [drafts]);
 
   // Best-effort GC of a staged object the user never sent. Fire-and-forget.
   const removeStaged = useCallback((path: string | undefined) => {
@@ -223,7 +240,7 @@ export function MessageComposer({
       cancelledRef.current = true;
       // stop() releases the mic stream + audio context inside opus-recorder.
       void recorderRef.current?.stop().catch(() => {});
-      removeStaged(draftRef.current?.path);
+      draftsRef.current.forEach((d) => removeStaged(d.path));
     };
   }, [clearTimer, removeStaged]);
 
@@ -396,43 +413,73 @@ export function MessageComposer({
     [openInteractiveBuilder, adjustHeight],
   );
 
-  // Upload a captured file to chat-media and stage it as a draft.
-  const stageUpload = useCallback(
-    async (kind: ComposerMediaKind, file: File) => {
-      // Per-kind ceiling mirrors Meta's caps (image 5 MB, etc.) so we
-      // reject before upload rather than orphaning an object that Meta
-      // would then refuse at send.
+  // Upload one or more picked files to chat-media and stage them in the tray.
+  // Uploads run a few at a time but keep the order the user picked them in.
+  const stageFiles = useCallback(
+    async (kind: ComposerMediaKind, files: File[]) => {
+      if (files.length === 0) return;
+      const { accepted, dropped } = limitToRoom(draftsRef.current.length, files);
+      if (dropped > 0) toast.error(t("tooManyFiles", { max: MAX_ATTACHMENTS }));
+      // Per-kind ceiling mirrors Meta's caps (image 5 MB, etc.) so we reject
+      // before upload rather than orphaning an object Meta would refuse.
       const max = MEDIA_MAX_BYTES_BY_KIND[kind];
-      if (file.size > max) {
-        toast.error(
-          t("fileTooLarge", {
-            size: (file.size / 1024 / 1024).toFixed(1),
-            kind: t(`mediaKind.${kind}`),
-            max: Math.round(max / 1024 / 1024),
-          }),
-        );
-        return;
+      const valid: File[] = [];
+      for (const file of accepted) {
+        if (file.size > max) {
+          toast.error(
+            t("fileTooLarge", {
+              size: (file.size / 1024 / 1024).toFixed(1),
+              kind: t(`mediaKind.${kind}`),
+              max: Math.round(max / 1024 / 1024),
+            }),
+          );
+        } else {
+          valid.push(file);
+        }
       }
+      if (valid.length === 0) return;
+
       setBusy(true);
-      try {
-        const { publicUrl, path } = await uploadAccountMedia(CHAT_MEDIA_BUCKET, file);
-        // Replacing an existing draft? GC the previous object first.
-        removeStaged(draftRef.current?.path);
-        setDraft({ kind, mediaUrl: publicUrl, path, filename: file.name, caption: "" });
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : t("uploadFailed"));
-      } finally {
-        setBusy(false);
+      setUploadProgress({ done: 0, total: valid.length });
+      const results = await runPool(
+        valid,
+        UPLOAD_CONCURRENCY,
+        async (file) => {
+          const { publicUrl, path } = await uploadAccountMedia(CHAT_MEDIA_BUCKET, file);
+          return { id: newDraftId(), kind, mediaUrl: publicUrl, path, filename: file.name, caption: "" } as MediaDraft;
+        },
+        (done, total) => setUploadProgress({ done, total }),
+      );
+      const staged: MediaDraft[] = [];
+      let failed = 0;
+      let firstError: string | null = null;
+      for (const r of results) {
+        if (r.ok) staged.push(r.value);
+        else {
+          failed++;
+          if (!firstError && r.error instanceof Error) firstError = r.error.message;
+        }
       }
+      if (staged.length > 0) {
+        setDrafts((prev) => [...prev, ...staged]);
+        setActiveId(staged[0].id);
+      }
+      if (failed > 0) {
+        toast.error(valid.length === 1 ? (firstError ?? t("uploadFailed")) : t("someUploadsFailed", { count: failed }));
+      }
+      setUploadProgress(null);
+      setBusy(false);
     },
-    [removeStaged, t],
+    [t],
   );
 
   const handlePicked = useCallback(
-    (kind: "image" | "video" | "document", file: File | undefined) => {
-      if (file) void stageUpload(kind, file);
+    (kind: "image" | "video" | "document", files: FileList | null | undefined) => {
+      // Copy NOW: the input is cleared right after, which empties a live FileList.
+      const picked = Array.from(files ?? []);
+      if (picked.length > 0) void stageFiles(kind, picked);
     },
-    [stageUpload],
+    [stageFiles],
   );
 
   // ---- Voice recording (client-side Ogg/Opus, no server transcode) ---
@@ -454,15 +501,16 @@ export function MessageComposer({
       setBusy(true);
       try {
         const { publicUrl, path } = await uploadAccountMedia(CHAT_MEDIA_BUCKET, file);
-        removeStaged(draftRef.current?.path);
-        setDraft({ kind: "audio", mediaUrl: publicUrl, path, filename: file.name, caption: "" });
+        const voice: MediaDraft = { id: newDraftId(), kind: "audio", mediaUrl: publicUrl, path, filename: file.name, caption: "" };
+        setDrafts((prev) => [...prev, voice]);
+        setActiveId(voice.id);
       } catch (err) {
         toast.error(err instanceof Error ? err.message : t("uploadFailed"));
       } finally {
         setBusy(false);
       }
     },
-    [removeStaged, t],
+    [t],
   );
 
   const startRecording = useCallback(async () => {
@@ -522,33 +570,50 @@ export function MessageComposer({
 
   // ---- Draft send / discard -----------------------------------------
 
-  const sendDraft = useCallback(() => {
-    if (!draft || busy) return;
-    onSendMedia({
-      kind: draft.kind,
-      mediaUrl: draft.mediaUrl,
-      path: draft.path,
-      // Audio takes no caption (Meta rejects it). Everything else: the
-      // trimmed caption, or undefined when blank.
-      caption:
-        draft.kind === "audio" ? undefined : draft.caption.trim() || undefined,
-      filename: draft.kind === "document" ? draft.filename : undefined,
-      replyToId: replyTo?.id,
-    });
-    // The object is now owned by the sent message — clear without GC.
-    setDraft(null);
+  const sendDrafts = useCallback(async () => {
+    if (drafts.length === 0 || busy) return;
+    const batch = drafts;
+    const replyToId = replyTo?.id;
+    // The objects are now owned by the sent messages — clear without GC.
+    setDrafts([]);
+    setActiveId(null);
     onClearReply?.();
-  }, [draft, busy, onSendMedia, replyTo?.id, onClearReply]);
+    // One message per file, in the order picked; the reply quote goes on the first.
+    await sendInOrder(batch, (d, i) =>
+      onSendMedia({
+        kind: d.kind,
+        mediaUrl: d.mediaUrl,
+        path: d.path,
+        // Audio takes no caption (Meta rejects it). Everything else: the
+        // trimmed caption, or undefined when blank.
+        caption: d.kind === "audio" ? undefined : d.caption.trim() || undefined,
+        filename: d.kind === "document" ? d.filename : undefined,
+        replyToId: i === 0 ? replyToId : undefined,
+      }),
+    );
+  }, [drafts, busy, onSendMedia, replyTo?.id, onClearReply]);
 
   // Discard GCs the staged object — it was uploaded but never sent.
   const discardDraft = useCallback(() => {
-    removeStaged(draft?.path);
-    setDraft(null);
-  }, [draft?.path, removeStaged]);
+    if (!draft) return;
+    removeStaged(draft.path);
+    setDrafts((prev) => prev.filter((d) => d.id !== draft.id));
+    setActiveId(null);
+  }, [draft, removeStaged]);
 
-  const setCaption = useCallback((caption: string) => {
-    setDraft((d) => (d ? { ...d, caption } : d));
-  }, []);
+  const clearAllDrafts = useCallback(() => {
+    draftsRef.current.forEach((d) => removeStaged(d.path));
+    setDrafts([]);
+    setActiveId(null);
+  }, [removeStaged]);
+
+  const activeDraftId = draft?.id;
+  const setCaption = useCallback(
+    (caption: string) => {
+      setDrafts((prev) => prev.map((d) => (d.id === activeDraftId ? { ...d, caption } : d)));
+    },
+    [activeDraftId],
+  );
 
   // ---- Render --------------------------------------------------------
 
@@ -585,9 +650,10 @@ export function MessageComposer({
         ref={imageInputRef}
         type="file"
         accept={PICKER_ACCEPT.image}
+        multiple
         className="hidden"
         onChange={(e) => {
-          handlePicked("image", e.target.files?.[0]);
+          handlePicked("image", e.target.files);
           e.target.value = "";
         }}
       />
@@ -595,9 +661,10 @@ export function MessageComposer({
         ref={videoInputRef}
         type="file"
         accept={PICKER_ACCEPT.video}
+        multiple
         className="hidden"
         onChange={(e) => {
-          handlePicked("video", e.target.files?.[0]);
+          handlePicked("video", e.target.files);
           e.target.value = "";
         }}
       />
@@ -605,23 +672,43 @@ export function MessageComposer({
         ref={documentInputRef}
         type="file"
         accept={PICKER_ACCEPT.document}
+        multiple
         className="hidden"
         onChange={(e) => {
-          handlePicked("document", e.target.files?.[0]);
+          handlePicked("document", e.target.files);
           e.target.value = "";
         }}
       />
 
+      {uploadProgress && (
+        <p className="mb-2 flex items-center gap-2 text-xs text-muted-foreground" role="status">
+          <Loader2 className="h-3 w-3 animate-spin" />
+          {t("uploadingProgress", { done: uploadProgress.done, total: uploadProgress.total })}
+        </p>
+      )}
+
       {draft ? (
-        <MediaDraftPreview
-          draft={draft}
-          busy={busy}
-          readOnly={readOnly}
-          onCaptionChange={setCaption}
-          onDiscard={discardDraft}
-          onSend={sendDraft}
-          t={t}
-        />
+        <div className="space-y-2">
+          {drafts.length > 1 && (
+            <MediaDraftStrip
+              drafts={drafts}
+              activeId={draft.id}
+              onSelect={setActiveId}
+              onClearAll={clearAllDrafts}
+              t={t}
+            />
+          )}
+          <MediaDraftPreview
+            draft={draft}
+            count={drafts.length}
+            busy={busy}
+            readOnly={readOnly}
+            onCaptionChange={setCaption}
+            onDiscard={discardDraft}
+            onSend={sendDrafts}
+            t={t}
+          />
+        </div>
       ) : recording ? (
         // Recording bar — replaces the composer while the mic is live.
         <div className="flex items-center gap-3 rounded-xl border border-border bg-muted px-4 py-2.5">
@@ -788,7 +875,7 @@ export function MessageComposer({
       {/* Hint sits outside the flex row so its height doesn't push
           `items-end` buttons below the textarea. Indented to line up
           under the textarea left edge. */}
-      {!draft && !recording && (
+      {drafts.length === 0 && !recording && (
         <p className="mt-1 pl-1 text-[10px] text-muted-foreground sm:pl-[5.5rem]">
           {t("draftHint")}
         </p>
@@ -838,6 +925,63 @@ export function MessageComposer({
 }
 
 /**
+ * Thumbnails of every staged attachment. Tap one to preview it and edit its
+ * caption; "Remove all" empties the tray.
+ */
+function MediaDraftStrip({
+  drafts,
+  activeId,
+  onSelect,
+  onClearAll,
+  t,
+}: {
+  drafts: MediaDraft[];
+  activeId: string;
+  onSelect: (id: string) => void;
+  onClearAll: () => void;
+  t: ReturnType<typeof useTranslations>;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto py-1">
+        {drafts.map((d, i) => (
+          <button
+            key={d.id}
+            type="button"
+            onClick={() => onSelect(d.id)}
+            aria-label={t("attachmentN", { n: i + 1 })}
+            aria-current={d.id === activeId}
+            className={cn(
+              "relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-muted",
+              d.id === activeId ? "border-primary ring-2 ring-primary/40" : "border-border",
+            )}
+          >
+            {d.kind === "image" ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={d.mediaUrl} alt="" className="h-full w-full object-cover" />
+            ) : d.kind === "video" ? (
+              <video src={d.mediaUrl} className="h-full w-full object-cover" muted />
+            ) : (
+              <FileText className="h-5 w-5 text-muted-foreground" />
+            )}
+            <span className="absolute bottom-0 right-0 rounded-tl bg-black/60 px-1 text-[10px] text-white">
+              {i + 1}
+            </span>
+          </button>
+        ))}
+      </div>
+      <button
+        type="button"
+        onClick={onClearAll}
+        className="shrink-0 text-xs text-muted-foreground hover:text-foreground"
+      >
+        {t("removeAll")}
+      </button>
+    </div>
+  );
+}
+
+/**
  * Staged-attachment preview with caption + send/discard. Declared at
  * module scope (not nested in MessageComposer) so React keeps it mounted
  * across the parent's re-renders — a nested component would remount the
@@ -845,6 +989,7 @@ export function MessageComposer({
  */
 function MediaDraftPreview({
   draft,
+  count,
   busy,
   readOnly,
   onCaptionChange,
@@ -853,6 +998,8 @@ function MediaDraftPreview({
   t,
 }: {
   draft: MediaDraft;
+  /** How many attachments will be sent together. */
+  count: number;
   busy: boolean;
   readOnly: boolean;
   onCaptionChange: (caption: string) => void;
@@ -918,12 +1065,15 @@ function MediaDraftPreview({
           gateReason={tGate("reasons.sendMessages")}
           disabled={busy}
           onClick={onSend}
+          aria-label={count > 1 ? t("sendCount", { count }) : undefined}
           className={cn(
-            "h-9 w-9 shrink-0 bg-primary p-0 hover:bg-primary/90 disabled:opacity-40",
+            "h-9 shrink-0 bg-primary hover:bg-primary/90 disabled:opacity-40",
+            count > 1 ? "gap-1 px-3" : "w-9 p-0",
             draft.kind === "audio" && "ml-auto",
           )}
         >
           <Send className="h-4 w-4" />
+          {count > 1 && <span className="text-xs font-medium">{count}</span>}
         </GatedButton>
       </div>
     </div>

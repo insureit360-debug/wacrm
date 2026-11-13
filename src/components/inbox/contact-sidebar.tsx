@@ -36,9 +36,11 @@ interface ContactSidebarProps {
   contact: Contact | null;
   /** Called after a tag was added/removed so the chat list's Tags filter stays in sync. */
   onTagsChange?: (contactId: string, tags: Tag[]) => void;
+  /** Fill the container instead of the fixed 280px column (mobile drawer). */
+  fullWidth?: boolean;
 }
 
-export function ContactSidebar({ contact, onTagsChange }: ContactSidebarProps) {
+export function ContactSidebar({ contact, onTagsChange, fullWidth }: ContactSidebarProps) {
   const tSidebar = useTranslations("Inbox.sidebar");
   const tThread = useTranslations("Inbox.messageThread");
 
@@ -182,7 +184,7 @@ export function ContactSidebar({ contact, onTagsChange }: ContactSidebarProps) {
 
   if (!contact) {
     return (
-      <div className="flex h-full w-70 items-center justify-center border-l border-border bg-card">
+      <div className={cn("flex h-full items-center justify-center bg-card", fullWidth ? "w-full" : "w-70 border-l border-border")}>
         <p className="text-sm text-muted-foreground">{tThread("selectConversation")}</p>
       </div>
     );
@@ -192,7 +194,7 @@ export function ContactSidebar({ contact, onTagsChange }: ContactSidebarProps) {
   const initials = displayName.charAt(0).toUpperCase();
 
   return (
-    <div className="flex h-full w-70 flex-col border-l border-border bg-card">
+    <div className={cn("flex h-full flex-col bg-card", fullWidth ? "w-full" : "w-70 border-l border-border")}>
       <ScrollArea className="flex-1">
         <div className="p-4">
           {/* Contact Info */}

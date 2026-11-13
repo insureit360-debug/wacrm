@@ -27,6 +27,7 @@ import {
   RefreshCw,
   PanelRightOpen,
   PanelRightClose,
+  Info,
 } from "lucide-react";
 import { format, isToday, isYesterday, differenceInHours } from "date-fns";
 import { useTranslations } from "next-intl";
@@ -130,6 +131,8 @@ interface MessageThreadProps {
    */
   contactPanelOpen?: boolean;
   onToggleContactPanel?: () => void;
+  /** Phones: open the contact panel (tags, notes, deals) as a drawer. */
+  onOpenContactInfo?: () => void;
 }
 
 function formatDateSeparator(dateStr: string, t: ReturnType<typeof useTranslations>): string {
@@ -189,6 +192,7 @@ export function MessageThread({
   onRefresh,
   contactPanelOpen,
   onToggleContactPanel,
+  onOpenContactInfo,
 }: MessageThreadProps) {
   const t = useTranslations("Inbox.messageThread");
   const tTimer = useTranslations("Inbox.sessionTimer");
@@ -1029,15 +1033,25 @@ export function MessageThread({
               <ArrowLeft className="h-5 w-5" />
             </button>
           )}
-          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-muted text-sm font-medium text-foreground">
-            {displayName.charAt(0).toUpperCase()}
-          </div>
-          <div className="min-w-0">
-            <h2 className="truncate text-sm font-semibold text-foreground">{displayName}</h2>
-            <p className="truncate text-xs text-muted-foreground">
-              {contactHandle(contact)}
-            </p>
-          </div>
+          {/* On phones, tapping the avatar/name opens the contact panel
+              (like WhatsApp). On desktop the panel is always beside the
+              chat, so this stays a plain, non-clickable block. */}
+          <button
+            type="button"
+            onClick={onOpenContactInfo}
+            aria-label={t("contactInfo")}
+            className="flex min-w-0 items-center gap-2 text-left sm:gap-3 lg:pointer-events-none"
+          >
+            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-muted text-sm font-medium text-foreground">
+              {displayName.charAt(0).toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <h2 className="truncate text-sm font-semibold text-foreground">{displayName}</h2>
+              <p className="truncate text-xs text-muted-foreground">
+                {contactHandle(contact)}
+              </p>
+            </div>
+          </button>
           {/* Session timer badge — hidden on the narrowest phones so
               the name + back arrow keep their room. */}
           <Badge
@@ -1058,6 +1072,17 @@ export function MessageThread({
               smaller laptops; this lets agents reclaim it when they just
               want to read and reply. Hidden on mobile, where the sidebar
               never renders as a permanent panel anyway. Issue #258. */}
+          {onOpenContactInfo && (
+            <button
+              type="button"
+              onClick={onOpenContactInfo}
+              aria-label={t("contactInfo")}
+              title={t("contactInfo")}
+              className="inline-flex h-7 w-7 items-center justify-center rounded-md text-primary transition-colors hover:bg-muted lg:hidden"
+            >
+              <Info className="h-4 w-4" />
+            </button>
+          )}
           {onToggleContactPanel && (
             <button
               type="button"

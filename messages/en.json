@@ -332,7 +332,8 @@
   },
   "Inbox": {
     "page": {
-      "whatsappNotConnected": "WhatsApp® is not connected. Go to Settings to connect your account."
+      "whatsappNotConnected": "WhatsApp® is not connected. Go to Settings to connect your account.",
+      "contactInfoTitle": "Contact info, tags & notes"
     },
     "conversationList": {
       "searchPlaceholder": "Search conversations...",
@@ -405,7 +406,8 @@
       "assigneeNoLongerMember": "That teammate is no longer a member of this account",
       "networkError": "network error",
       "documentFallback": "Document",
-      "you": "You"
+      "you": "You",
+      "contactInfo": "Contact info, tags & notes"
     },
     "sessionTimer": {
       "expired": "Expired",
@@ -456,7 +458,13 @@
         "document": "document",
         "audio": "audio"
       },
-      "uploadFailed": "Upload failed."
+      "uploadFailed": "Upload failed.",
+      "tooManyFiles": "You can attach up to {max} files at once.",
+      "uploadingProgress": "Uploading {done} of {total}…",
+      "someUploadsFailed": "{count} files could not be uploaded.",
+      "removeAll": "Remove all",
+      "sendCount": "Send {count} attachments",
+      "attachmentN": "Attachment {n}"
     },
     "bubble": {
       "photo": "Photo",
